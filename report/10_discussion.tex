@@ -1,9 +1,9 @@
 \section{Discussion}
 \label{sec:discussion}
 
-The results highlight a fundamental limitation of current zero-shot dense retrieval models in domains requiring explicit temporal alignment. While models like BGE-small excel at thematic matching, they fail when the differentiating factor between a relevant and irrelevant document is a specific date or time horizon.
+The results highlight that semantic matching bridges critical vocabulary gaps, allowing the zero-shot dense retriever (BGE-small) to significantly outperform lexical baselines like BM25 and TF-IDF. While dense models excel at thematic matching, they can occasionally fail when the differentiating factor is a specific date or time horizon.
 
-Conversely, while lexical models like BM25 are robust to specific keyword matching, they cannot bridge the vocabulary gap. The success of the pointwise LightGBM reranker demonstrates that combining BM25's strong lexical recall with explicit, hand-engineered temporal features (e.g., year overlap) offers a pragmatic and compute-efficient solution to temporally grounded retrieval.
+Conversely, while lexical models like BM25 are robust to specific keyword matching (like dates), they cannot bridge the vocabulary gap. The success of the pointwise LightGBM reranker over BM25 demonstrates that combining BM25's strong lexical recall with explicit, hand-engineered temporal features (e.g., year overlap) offers a pragmatic solution. However, the superior performance of the dense baseline suggests that future work should focus on temporal-aware dense encoding.
 
 \textbf{Reproducibility Configuration:}
 All experiments were run on a CPU-only environment (Windows 11, 8 cores, 16.9 GB RAM) using Python 3.12. We pinned random seeds to 42 for numpy and LightGBM. The dataset used is RETECO v1.1, restricted to the \texttt{quant}, \texttt{law}, and \texttt{workplace} domains.

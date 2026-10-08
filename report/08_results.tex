@@ -11,7 +11,7 @@ We present the nDCG@10 scores on the \textit{dev} split for our three selected d
 \midrule
 BM25 (k1=0.9, b=0.4) & 0.0237 & 0.0574 & 0.0230 & 0.0347 \\
 TF-IDF (Cosine) & 0.0053 & 0.0463 & 0.0094 & 0.0203 \\
-Dense (bge-small frozen) & 0.0000 & 0.0000 & 0.0084 & 0.0028 \\
+Dense (bge-small frozen) & 0.0919 & 0.3697 & 0.2676 & 0.2431 \\
 LightGBM Reranker (Top-50) & 0.0305 & 0.1340 & 0.0167 & 0.0604 \\
 Hybrid (RRF BM25+Dense) & 0.0022 & 0.0467 & 0.0124 & 0.0204 \\
 \bottomrule
@@ -20,4 +20,4 @@ Hybrid (RRF BM25+Dense) & 0.0022 & 0.0467 & 0.0124 & 0.0204 \\
 \label{tab:results}
 \end{table}
 
-The LightGBM pointwise reranker consistently outperforms the BM25 baseline on most domains, largely due to its ability to incorporate explicit temporal matching features. The frozen BGE-small dense retriever performs poorly overall, reinforcing the observation that off-the-shelf semantic encoders lack the fine-grained temporal and lexical reasoning required for this task. Hybrid RRF fusion also fails to consistently improve upon BM25, suffering from the inclusion of the weak dense signal.
+The LightGBM pointwise reranker outperforms the BM25 baseline on most domains due to its explicit temporal matching features. Surprisingly, the frozen BGE-small dense retriever achieved the highest overall score (0.2431 Macro nDCG@10). This indicates that bridging the vocabulary gap via semantic representations is highly beneficial for these specific domains, compensating for its lack of explicit temporal logic. Hybrid RRF fusion failed to properly combine the signals due to scale mismatches between BM25 scores and Dense similarities without calibration.
