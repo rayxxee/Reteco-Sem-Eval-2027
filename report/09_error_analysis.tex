@@ -1,0 +1,12 @@
+\section{Error Analysis}
+\label{sec:errors}
+
+We conducted an automated error analysis on 30 failed queries (nDCG@10 = 0 for both BM25 and Dense). Failures typically fell into the following heuristic categories:
+
+\begin{itemize}
+    \item \textbf{Temporal Mismatch:} The query requested information for a specific year, but the retrieved documents, while semantically relevant, discussed a different time period. 
+    \item \textbf{Lexical Gap:} The Jaccard similarity between the query and gold document was exceptionally low (e.g., $<0.05$). The user posed the question using vocabulary entirely absent from the relevant post.
+    \item \textbf{Multi-step Reasoning Needed:} For queries corresponding to Sub-track 1b steps, resolving the root query required intermediate hops that our single-pass retrieval pipelines could not perform.
+\end{itemize}
+
+Where BM25 substantially outperformed the dense retriever, it was often due to the dense model conflating semantically similar concepts that lexical matching naturally distinguishes (e.g., precise legal codes or quantitative formulas).

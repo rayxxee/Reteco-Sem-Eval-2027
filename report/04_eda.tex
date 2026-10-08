@@ -1,0 +1,13 @@
+\section{Exploratory Data Analysis}
+\label{sec:eda}
+
+Our Exploratory Data Analysis (EDA) on the chosen domains revealed several key characteristics that inform our modeling strategy:
+
+\begin{enumerate}
+    \item \textbf{Length/Structure:} Queries are short, but document lengths are right-skewed with long tails. This implies dense encoders (truncated at 256 or 512 tokens) may lose critical temporal context in the tail of long documents.
+    \item \textbf{Relevance Structure:} Extreme needle-in-a-haystack ratio. Most queries have 1–4 gold documents among tens of thousands. This extreme imbalance makes nDCG@10 highly sensitive to single omissions.
+    \item \textbf{Lexical Overlap:} Gold documents have higher Jaccard overlap with queries than random documents, but absolute overlap remains very low (medians $\sim$0.01–0.05). This vocabulary gap limits pure lexical retrieval.
+    \item \textbf{Temporal Cues:} Queries frequently mention years/dates. While gold docs also mention them, many non-relevant docs do as well. The presence of a year is not discriminative; the \textit{alignment} of years is what matters.
+    \item \textbf{Lexical Richness:} MTLD (Measure of Textual Lexical Diversity) distributions are nearly identical between gold and random documents. Complexity of language does not indicate relevance in this dataset.
+    \item \textbf{Embedding Structure:} PCA projections of frozen BGE-small embeddings show that query-gold pairs cluster closer than query-random pairs, but the separation is not clean. Dense models provide a complementary semantic signal but will still exhibit false positives.
+\end{enumerate}

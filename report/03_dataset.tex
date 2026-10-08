@@ -1,0 +1,13 @@
+\section{Dataset}
+\label{sec:dataset}
+
+The RETECO Track 1 (v1.1) dataset contains 1.16 million documents distributed across 13 diverse domains (e.g., history, politics, finance). The v1.1 release represents a deduplicated version of the corpus, reducing redundant documents by roughly 29\%.
+
+Due to hardware constraints (CPU-only), we restrict our experiments to a subset of three domains that represent a balance of small corpus size and a reasonable number of development queries ($\ge 10$):
+\begin{itemize}
+    \item \textbf{quant}: 25,040 documents, 10 dev queries.
+    \item \textbf{law}: 36,110 documents, 11 dev queries.
+    \item \textbf{workplace}: 43,584 documents, 11 dev queries.
+\end{itemize}
+
+This subset selection ensures reproducible and fast iterations for both dense and classical pipelines while providing enough signal to analyze temporal and lexical matching behaviors.

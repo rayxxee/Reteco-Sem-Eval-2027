@@ -1,0 +1,18 @@
+\section{Related Work}
+\label{sec:related}
+
+Our work builds upon foundational methods in information retrieval and modern dense representation learning.
+
+\begin{itemize}
+    \item \textbf{Classical Retrieval:} The BM25 algorithm \cite{bm25} serves as a robust baseline for lexical matching. It effectively models term frequency saturation and document length normalization, which remains critical for retrieving long documents.
+    \item \textbf{Dense Retrieval:} BAAI's BGE models \cite{bge_models} represent the current state-of-the-art in small-footprint bi-encoder representations, providing strong semantic matching capabilities without the need for lexical overlap.
+    \item \textbf{Reranking Models:} Pointwise and listwise reranking using tree-based methods like LightGBM \cite{lightgbm} have proven effective in incorporating diverse hand-crafted features (e.g., temporal overlap, query length) alongside baseline retrieval scores.
+    \item \textbf{Task Benchmarks:} The upstream datasets for this challenge are derived from the TEMPO \cite{tempo} and RECOR \cite{recor} benchmarks.
+\end{itemize}
+
+\textbf{Reading List for Further Review:}
+\begin{enumerate}
+    \item TEMPO: Temporally Grounded Retrieval Benchmark (to verify data generation methods)
+    \item RECOR: Reasoning-Intensive Conversational Retrieval (to understand the conversational counterpart)
+    \item C-Pack / BGE Models (to understand the bi-encoder architecture and training)
+\end{enumerate}

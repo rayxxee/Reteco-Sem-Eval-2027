@@ -1,0 +1,11 @@
+\section{Baseline Models}
+\label{sec:baselines}
+
+We evaluate four primary approaches:
+\begin{enumerate}
+    \item \textbf{BM25 (Official):} The classical probabilistic retrieval baseline provided in the starter kit ($k_1=0.9, b=0.4$).
+    \item \textbf{TF-IDF:} A standard Term Frequency-Inverse Document Frequency vectorizer using cosine similarity.
+    \item \textbf{LightGBM Reranker:} A pointwise gradient boosted decision tree classifier trained on the train split using the 13 engineered features. It reranks the top-50 BM25 candidates.
+    \item \textbf{Dense Retriever (Frozen):} BAAI/bge-small-en-v1.5 bi-encoder. The model is completely frozen (no fine-tuning). We embed the entire corpus offline (truncated to 256 tokens for speed) and perform cosine similarity search.
+    \item \textbf{Hybrid (BM25 + Dense):} A simple Reciprocal Rank Fusion (RRF, $k=60$) combining the BM25 lexical rankings with the Dense semantic rankings.
+\end{enumerate}

@@ -1,0 +1,10 @@
+\section{Feature Engineering}
+\label{sec:features}
+
+Guided by the EDA, we engineered 13 features to train a pointwise reranker over the top-50 BM25 candidates:
+\begin{itemize}
+    \item \textbf{Base Retrieval:} BM25 score, normalized BM25 score, TF-IDF cosine similarity, reciprocal rank.
+    \item \textbf{Lexical Overlap:} Jaccard similarity of alphanumeric terms between query and document.
+    \item \textbf{Length Statistics:} Log-normalized query and document lengths ($\log(1 + |D|)$), directly addressing the skewed length distributions identified in EDA.
+    \item \textbf{Temporal Features:} Boolean flags for the presence of any year or date in the query and document, absolute year overlap count ($|Y_Q \cap Y_D|$), and fractional year overlap. These features explicitly capture the temporal alignment critical for Sub-track 1a.
+\end{itemize}

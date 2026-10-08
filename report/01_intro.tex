@@ -1,0 +1,9 @@
+\section{Introduction and Task Definition}
+\label{sec:intro}
+
+The RETECO SemEval-2027 shared task \cite{reteco2027} introduces a reasoning-oriented framework for temporal and conversational retrieval. In this report, we focus on Track 1, Sub-track 1a (Temporally Grounded Retrieval). 
+
+\textbf{Task Formulation:} Given a user query $Q$ that implies a temporal constraint (e.g., ``Where can I check the voting date for the law?'') and a large corpus of documents $\mathcal{C}$, the goal is to return a ranked list of document IDs that are relevant and temporally aligned with the query's implicit or explicit time frame. The output format is a standard TREC-style ranked list.
+
+\textbf{Why it is hard:} 
+This task is challenging because it requires both black-box semantic matching and white-box temporal reasoning. Simple lexical overlap often yields shortcuts (e.g., retrieving a document that contains the same year as the query, but discusses a different event). Furthermore, the dataset exhibits strong domain effects and features documents with highly skewed relevance distributions, making purely frequency-based methods like BM25 insufficient for nuanced temporal disambiguation.

@@ -1,0 +1,39 @@
+\documentclass[11pt, a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{RETECO SemEval-2027 Task 1, Sub-track 1a: Temporally Grounded Retrieval}
+\author{Data Science UIBK NLP Assignment}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This report details our system and experiments for the RETECO SemEval-2027 Task 1 (Temporally Grounded Retrieval), specifically Sub-track 1a (whole-query retrieval). We establish strong classical baselines (BM25, TF-IDF), analyze temporal and lexical features, implement a pointwise LightGBM reranker, and compare performance against a frozen dense retriever (BGE-small). We evaluate on a CPU-friendly subset of the dataset and highlight limitations in semantic mismatch and temporal alignment.
+\end{abstract}
+
+\input{01_intro.tex}
+\input{02_related_work.tex}
+\input{03_dataset.tex}
+\input{04_eda.tex}
+\input{05_feature_engineering.tex}
+\input{06_baselines.tex}
+\input{07_evaluation_setup.tex}
+\input{08_results.tex}
+\input{09_error_analysis.tex}
+\input{10_discussion.tex}
+\input{11_next_steps.tex}
+
+\bibliographystyle{plain}
+\bibliography{refs}
+
+\end{document}

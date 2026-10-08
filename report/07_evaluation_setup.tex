@@ -1,0 +1,18 @@
+\section{Evaluation Setup}
+\label{sec:evaluation}
+
+The official metric for Sub-track 1a is \textbf{nDCG@10} (Normalized Discounted Cumulative Gain at cutoff 10), macro-averaged over queries.
+
+Mathematically, for a given query, the Discounted Cumulative Gain at rank $k$ is defined as:
+\begin{equation}
+    \text{DCG}@k = \sum_{i=1}^{k} \frac{rel_i}{\log_2(i+1)}
+\end{equation}
+where $rel_i \in \{0, 1\}$ is the binary relevance of the document at rank $i$.
+
+The nDCG is the DCG normalized by the Ideal DCG (IDCG), which is the DCG of a perfectly ranked list:
+\begin{equation}
+    \text{nDCG}@k = \frac{\text{DCG}@k}{\text{IDCG}@k}
+\end{equation}
+
+\textbf{Characteristics of the metric:}
+nDCG heavily rewards retrieving relevant documents at the very top ranks (rank 1 and 2) due to the steep logarithmic discount. Because this is a retrieval task and not standard classification, there is no traditional "class imbalance" problem in the loss function, but the extreme skew in gold-document counts (many queries have only 1-2 relevant documents) means that missing a single document severely penalizes the score. Macro-averaging ensures that queries with many relevant documents do not disproportionately dominate the overall system score.

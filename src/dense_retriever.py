@@ -53,6 +53,7 @@ class FrozenBiEncoder:
         self.batch_size = batch_size
         self.max_seq_length = max_seq_length
         self._model = None
+        self.query_instruction = "Represent this sentence for searching relevant passages: "
 
     def _load_model(self):
         if self._model is None:
@@ -66,15 +67,20 @@ class FrozenBiEncoder:
             print(f"Loaded {self.model_name} on CPU (frozen, max_seq={self.max_seq_length})")
         return self._model
 
-    def encode(self, texts: list[str], show_progress: bool = True) -> np.ndarray:
-        """Encode texts → L2-normalized embeddings. No fine-tuning."""
+    def encode(self, texts: list[str], show_progress: bool = True, is_query: bool = False) -> np.ndarray:
+        """Encode texts L2-normalized embeddings. No fine-tuning."""
         model = self._load_model()
         t0 = time.time()
+        
+        # Add instruction for queries for BGE models
+        if is_query and "bge" in self.model_name.lower():
+            texts = [self.query_instruction + t for t in texts]
+            
         embs = model.encode(
             texts,
             batch_size=self.batch_size,
             show_progress_bar=show_progress,
-            normalize_embeddings=True,   # L2-norm → cosine = dot product
+            normalize_embeddings=True,   # L2-norm => cosine = dot product
             convert_to_numpy=True,
         )
         elapsed = time.time() - t0
@@ -96,7 +102,8 @@ class FrozenBiEncoder:
         meta_path = _get_meta_path(cache_dir, domain, "corpus")
 
         if emb_path.exists() and meta_path.exists() and not force_recompute:
-            meta = json.load(open(meta_path))
+            with open(meta_path, "r") as f:
+                meta = json.load(f)
             if (meta.get("model") == self.model_name
                     and meta.get("n_docs") == len(doc_ids)
                     and meta.get("max_seq_length") == self.max_seq_length):
@@ -106,15 +113,16 @@ class FrozenBiEncoder:
 
         print(f"  Computing corpus embeddings for {domain} "
               f"({len(doc_ids):,} docs)...")
-        embs = self.encode(doc_texts, show_progress=True)
+        embs = self.encode(doc_texts, show_progress=True, is_query=False)
         np.save(emb_path, embs)
-        json.dump({
-            "model": self.model_name,
-            "n_docs": len(doc_ids),
-            "max_seq_length": self.max_seq_length,
-            "batch_size": self.batch_size,
-            "embed_dim": embs.shape[1],
-        }, open(meta_path, "w"), indent=2)
+        with open(meta_path, "w") as f:
+            json.dump({
+                "model": self.model_name,
+                "n_docs": len(doc_ids),
+                "max_seq_length": self.max_seq_length,
+                "batch_size": self.batch_size,
+                "embed_dim": embs.shape[1],
+            }, f, indent=2)
         return embs
 
     def search(
@@ -125,9 +133,16 @@ class FrozenBiEncoder:
         top_k: int = 100,
     ) -> list[tuple[str, float]]:
         """Retrieve top-k docs by cosine similarity (dot product on L2-normed embs)."""
-        q_emb = self.encode([query], show_progress=False)  # (1, D)
-        scores = (corpus_embs @ q_emb.T).squeeze()         # (N,)
-        top_idx = np.argsort(-scores)[:top_k]
+        q_emb = self.encode([query], show_progress=False, is_query=True)  # (1, D)
+        scores = (corpus_embs @ q_emb.T).reshape(-1)                      # (N,)
+        
+        k = min(top_k, len(scores))
+        if k == 0:
+            return []
+            
+        top_idx = np.argpartition(scores, -k)[-k:]
+        top_idx = top_idx[np.argsort(-scores[top_idx])]
+        
         return [(doc_ids[i], float(scores[i])) for i in top_idx]
 
     def batch_search(
@@ -140,10 +155,18 @@ class FrozenBiEncoder:
         """Batch retrieve; encode all queries at once then matrix multiply."""
         qids = [q[0] for q in queries]
         qtexts = [q[1] for q in queries]
-        q_embs = self.encode(qtexts, show_progress=True)   # (Q, D)
+        q_embs = self.encode(qtexts, show_progress=True, is_query=True)   # (Q, D)
         scores = q_embs @ corpus_embs.T                    # (Q, N)
         results = {}
+        
+        k = min(top_k, scores.shape[1])
+        if k == 0:
+            return {qid: [] for qid in qids}
+            
         for i, qid in enumerate(qids):
-            top_idx = np.argsort(-scores[i])[:top_k]
-            results[qid] = [(doc_ids[j], float(scores[i, j])) for j in top_idx]
+            row_scores = scores[i]
+            top_idx = np.argpartition(row_scores, -k)[-k:]
+            top_idx = top_idx[np.argsort(-row_scores[top_idx])]
+            results[qid] = [(doc_ids[j], float(row_scores[j])) for j in top_idx]
+            
         return results
