@@ -59,12 +59,13 @@ class FrozenBiEncoder:
         if self._model is None:
             from sentence_transformers import SentenceTransformer
             import torch
-            self._model = SentenceTransformer(self.model_name, device="cpu")
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            self._model = SentenceTransformer(self.model_name, device=device)
             self._model.max_seq_length = self.max_seq_length
             # Ensure frozen: no gradients
             for param in self._model.parameters():
                 param.requires_grad = False
-            print(f"Loaded {self.model_name} on CPU (frozen, max_seq={self.max_seq_length})")
+            print(f"Loaded {self.model_name} on {device.upper()} (frozen, max_seq={self.max_seq_length})")
         return self._model
 
     def encode(self, texts: list[str], show_progress: bool = True, is_query: bool = False) -> np.ndarray:
