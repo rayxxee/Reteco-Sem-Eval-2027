@@ -1,0 +1,47 @@
+# RETECO SemEval-2027 – Sub-track 1a experiment requirements
+# Pinned for reproducibility (Python 3.14, Windows 11, CPU-only)
+# Install: pip install -r requirements.txt
+
+# ── Data & IO ────────────────────────────────────────────────────────────────
+huggingface_hub>=0.24
+pyarrow>=15
+datasets>=2.20
+
+# ── BM25 baseline (pure-Python, no Java needed) ───────────────────────────
+rank-bm25>=0.2.2
+
+# ── TF-IDF ────────────────────────────────────────────────────────────────
+scikit-learn>=1.5
+
+# ── Feature-based reranker ────────────────────────────────────────────────
+lightgbm>=4.3
+
+# ── Dense retrieval (frozen bi-encoder, CPU) ─────────────────────────────
+sentence-transformers>=3.0
+torch>=2.3          # CPU build is fine
+
+# ── Evaluation ────────────────────────────────────────────────────────────
+pytrec-eval-terrier>=0.5.6   # pure-Python wheels, no Java
+
+# ── EDA / Plotting ────────────────────────────────────────────────────────
+numpy>=1.26
+pandas>=2.2
+matplotlib>=3.8
+seaborn>=0.13
+umap-learn>=0.5.6
+
+# ── NLP utilities ─────────────────────────────────────────────────────────
+spacy>=3.7
+# Run after install: python -m spacy download en_core_web_sm
+
+# ── Lexical richness ─────────────────────────────────────────────────────
+lexical-diversity>=0.1.1
+
+# ── Notebook runner ──────────────────────────────────────────────────────
+jupyter>=1.0
+nbformat>=5.9
+nbconvert>=7.14
+
+# ── Utils ─────────────────────────────────────────────────────────────────
+tqdm>=4.66
+joblib>=1.3
