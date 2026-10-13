@@ -1,66 +1,13 @@
 \section{Exploratory Data Analysis}
 \label{sec:eda}
 
-We conduct Exploratory Data Analysis (EDA) across our three designated evaluation domains (\texttt{quant}, \texttt{law}, and \texttt{workplace}). For each feature group, our analysis follows the required format: \textbf{Observation} (empirical statistical pattern), \textbf{Interpretation} (underlying causes, shortcut risks, and confounds), and \textbf{Modeling Implication} (consequences for feature design, baselines, and evaluation). In accordance with the assignment guidelines, all associated plots are displayed without figure captions.
+Our Exploratory Data Analysis (EDA) on the chosen domains revealed several key characteristics that inform our modeling strategy:
 
-\subsection{Length and Structural Characteristics}
-\begin{itemize}
-    \item \textbf{Observation:} Median query lengths range from 100 to 173 tokens, whereas median document lengths range from 148 to 156 tokens across domains. Document length distributions are heavily right-skewed with extended long tails.
-    \item \textbf{Interpretation:} Queries are concise, while corpus passages vary considerably in length. Long-tail documents dilute bag-of-words term frequencies and frequently exceed standard dense bi-encoder context windows (e.g., 256 or 512 tokens).
-    \item \textbf{Modeling Implication:} Document length must be supplied as a non-linear feature to the reranker. For dense encoders, truncation at 256 tokens risks omitting critical temporal markers situated late in passages.
-\end{itemize}
-
-\begin{center}
-    \includegraphics[width=0.75\textwidth]{figures/eda_01.png}
-\end{center}
-
-\subsection{Relevance Structure and Judgment Distribution}
-\begin{itemize}
-    \item \textbf{Observation:} Median gold document count per query is strictly 2 across \texttt{quant}, \texttt{law}, and \texttt{workplace} (maximum 4--5). With corpora comprising 25,000 to 43,000 passages, relevant documents constitute $<0.01\%$ of candidate space.
-    \item \textbf{Interpretation:} This represents an extreme needle-in-a-haystack retrieval scenario. Because each query has very few relevant documents, rank-biased metrics such as nDCG@10 drop sharply on single false-negative omissions.
-    \item \textbf{Modeling Implication:} Pairwise or pointwise reranker training must handle severe label skew via negative subsampling. Evaluation averages are acutely sensitive to performance on few-gold queries.
-\end{itemize}
-
-\begin{center}
-    \includegraphics[width=0.75\textwidth]{figures/eda_02.png}
-\end{center}
-
-\subsection{Query--Gold Lexical Overlap}
-\begin{itemize}
-    \item \textbf{Observation:} Gold documents exhibit higher Jaccard term overlap with queries than random corpus documents across all domains. However, absolute Jaccard medians remain low ($\sim$0.01--0.05).
-    \item \textbf{Interpretation:} BM25 exploits this difference to exceed random chance, but substantial vocabulary mismatch persists. Relevant answers frequently express concepts through synonyms or paraphrases absent in the query.
-    \item \textbf{Modeling Implication:} Lexical overlap is an essential but insufficient retrieval signal. Pretrained semantic dense representations are necessary to bridge vocabulary gaps where exact keyword matching fails.
-\end{itemize}
-
-\begin{center}
-    \includegraphics[width=0.75\textwidth]{figures/eda_03.png}
-\end{center}
-
-\subsection{Temporal Cues and Alignment}
-\begin{itemize}
-    \item \textbf{Observation:} Queries frequently contain temporal cues, such as explicit years (18--40\% of queries). However, irrelevant documents mention dates at comparable rates to gold documents.
-    \item \textbf{Interpretation:} Mere presence of a temporal cue is non-discriminative. The crucial retrieval signal is temporal \textit{congruence} (year overlap between query and passage) rather than superficial date mentions.
-    \item \textbf{Modeling Implication:} Exact year overlap and normalized temporal match features must be engineered directly into the reranker. Dense bi-encoders without explicit temporal grounding risk confusing distinct eras.
-\end{itemize}
-
-\begin{center}
-    \includegraphics[width=0.75\textwidth]{figures/eda_04.png}
-\end{center}
-
-\subsection{Lexical Richness and Diversity (MTLD)}
-\begin{itemize}
-    \item \textbf{Observation:} Measure of Textual Lexical Diversity (MTLD) scores are comparable between gold and non-gold documents, with distributions concentrating between 60 and 120 across all three domains.
-    \item \textbf{Interpretation:} Textual complexity and vocabulary diversity do not distinguish relevant from irrelevant documents; linguistic style is governed by platform norms rather than topical relevance.
-    \item \textbf{Modeling Implication:} Standalone lexical diversity metrics should not be prioritized in feature selection, allowing rerankers to focus on alignment and lexical-temporal congruence.
-\end{itemize}
-
-\begin{center}
-    \includegraphics[width=0.75\textwidth]{figures/eda_05.png}
-\end{center}
-
-\subsection{Sentence Embedding Structure}
-\begin{itemize}
-    \item \textbf{Observation:} Dense cosine similarities computed from frozen BAAI/bge-small-en-v1.5 embeddings show distinct separation: query--gold pairs achieve higher similarity than query--random pairs across all domains.
-    \item \textbf{Interpretation:} Zero-shot dense bi-encoders successfully capture underlying domain semantics, overcoming lexical mismatch.
-    \item \textbf{Modeling Implication:} Dense bi-encoder scoring serves as a primary retrieval mechanism, as corroborated by strong nDCG@10 results on dev splits.
-\end{itemize}
+\begin{enumerate}
+    \item \textbf{Length/Structure:} Queries are short, but document lengths are right-skewed with long tails. This implies dense encoders (truncated at 256 or 512 tokens) may lose critical temporal context in the tail of long documents.
+    \item \textbf{Relevance Structure:} Extreme needle-in-a-haystack ratio. Most queries have 1–4 gold documents among tens of thousands. This extreme imbalance makes nDCG@10 highly sensitive to single omissions.
+    \item \textbf{Lexical Overlap:} Gold documents have higher Jaccard overlap with queries than random documents, but absolute overlap remains very low (medians $\sim$0.01–0.05). This vocabulary gap limits pure lexical retrieval.
+    \item \textbf{Temporal Cues:} Queries frequently mention years/dates. While gold docs also mention them, many non-relevant docs do as well. The presence of a year is not discriminative; the \textit{alignment} of years is what matters.
+    \item \textbf{Lexical Richness:} MTLD (Measure of Textual Lexical Diversity) distributions are nearly identical between gold and random documents. Complexity of language does not indicate relevance in this dataset.
+    \item \textbf{Embedding Structure:} PCA projections of frozen BGE-small embeddings show that query-gold pairs cluster closer than query-random pairs, but the separation is not clean. Dense models provide a complementary semantic signal but will still exhibit false positives.
+\end{enumerate}
