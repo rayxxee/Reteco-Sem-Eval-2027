@@ -1,9 +1,23 @@
 \section{Introduction and Task Definition}
 \label{sec:intro}
 
-The RETECO SemEval-2027 shared task \cite{reteco2027} introduces a reasoning-oriented framework for temporal and conversational retrieval. In this report, we focus on Track 1, Sub-track 1a (Temporally Grounded Retrieval). 
+The RETECO shared task at SemEval-2027 \cite{tempo,recor} investigates reasoning-oriented information retrieval across temporal and conversational settings. In this investigation, we focus on \textbf{Track 1 (TEMPO), Sub-track 1a: Temporally Grounded Retrieval}. 
 
-\textbf{Task Formulation:} Given a user query $Q$ that implies a temporal constraint (e.g., ``Where can I check the voting date for the law?'') and a large corpus of documents $\mathcal{C}$, the goal is to return a ranked list of document IDs that are relevant and temporally aligned with the query's implicit or explicit time frame. The output format is a standard TREC-style ranked list.
+\subsection{Black-Box Task Formulation}
+Viewed as an unconstrained black-box prediction problem, the task is strictly formulated as \textbf{information retrieval and document ranking} (distinct from classification, regression, or text generation):
+\begin{itemize}
+    \item \textbf{Observable Input:} A natural language user query $Q$ posing an information-seeking question with explicit or implicit temporal grounding, alongside a static, uncurated corpus of candidate documents $\mathcal{C} = \{d_1, d_2, \dots, d_N\}$.
+    \item \textbf{Target Output:} A ranked permutation of the top-$k$ document identifiers $[d_{(1)}, d_{(2)}, \dots, d_{(k)}]$ from $\mathcal{C}$ (with evaluation cutoff $k=10$), ordered by predicted relevance.
+    \item \textbf{Prediction Type and Label Space:} Pointwise or listwise ranking over candidate passages. The ground-truth label space is binary relevance $rel(Q, d) \in \{0, 1\}$, where $rel=1$ designates an authoritative, temporally aligned answer document.
+    \item \textbf{Official Evaluation Metric:} Macro-averaged Normalized Discounted Cumulative Gain at cutoff 10 (\textbf{Macro nDCG@10}), computed over test queries.
+\end{itemize}
 
-\textbf{Why it is hard:} 
-This task is challenging because it requires both black-box semantic matching and white-box temporal reasoning. Simple lexical overlap often yields shortcuts (e.g., retrieving a document that contains the same year as the query, but discusses a different event). Furthermore, the dataset exhibits strong domain effects and features documents with highly skewed relevance distributions, making purely frequency-based methods like BM25 insufficient for nuanced temporal disambiguation.
+\subsection{White-Box Reasoning: What Makes the Task Difficult?}
+Moving beyond surface input-output mapping, we conduct white-box analysis of the linguistic, temporal, and dataset properties governing target relevance:
+
+\begin{itemize}
+    \item \textbf{Linguistic Cues and the Vocabulary Gap:} The corpus consists of real-world community question-answering posts (Stack Exchange). As demonstrated in our exploratory data analysis, queries rarely share exact phrasing with authoritative answers. The Jaccard term overlap between queries and gold documents is exceptionally low (median 0.01--0.05), requiring models to bridge severe vocabulary gaps rather than relying solely on surface lexical repetition.
+    \item \textbf{Temporal Anchors and Spurious Shortcuts:} A query may inquire about statutory regulations in 2018 (e.g., ``What were the standard tax deductions under US law in 2018?''). An irrelevant passage from 2023 discussing the identical tax deduction shares nearly all topical keywords with the query. Standard bag-of-words and semantic retrievers are highly vulnerable to this confound: they reward high topical overlap while remaining blind to temporal obsolescence. Crucially, non-relevant documents mention dates at rates comparable to relevant documents; thus, the mere presence of a temporal token is a spurious shortcut. Retrieval systems must verify \textit{temporal alignment} (congruence of query and document intervals).
+    \item \textbf{Extreme Label Skew (Needle in a Haystack):} Each query is paired with an average of only 1 to 4 gold documents among tens of thousands of candidate passages ($<0.01\%$ positive density). This extreme sparsity heavily penalizes false negatives, as a single omitted document drastically deflates rank-discounted metrics.
+    \item \textbf{Domain Heterogeneity:} The benchmark spans diverse domains with distinct linguistic characteristics: quantitative finance (\texttt{quant}) demands mathematical notation and specialized terminology; legal jurisprudence (\texttt{law}) requires strict statutory code interpretation; and workplace management (\texttt{workplace}) relies on conversational HR policies. Models must generalize across divergent stylistic and vocabulary distributions without overfitting to domain-specific syntax.
+\end{itemize}

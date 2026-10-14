@@ -1,9 +1,20 @@
-\section{Discussion}
+\section{Discussion and Limitations}
 \label{sec:discussion}
 
-The results highlight that semantic matching bridges critical vocabulary gaps, allowing the zero-shot dense retriever (BGE-small) to significantly outperform lexical baselines like BM25 and TF-IDF. While dense models excel at thematic matching, they can occasionally fail when the differentiating factor is a specific date or time horizon.
+Our empirical findings underscore the complementary nature of lexical and dense representations in temporally grounded retrieval.
 
-Conversely, while lexical models like BM25 are robust to specific keyword matching (like dates), they cannot bridge the vocabulary gap. The success of the pointwise LightGBM reranker over BM25 demonstrates that combining BM25's strong lexical recall with explicit, hand-engineered temporal features (e.g., year overlap) offers a pragmatic solution. However, the superior performance of the dense baseline suggests that future work should focus on temporal-aware dense encoding.
+\subsection{Key Findings and Trade-Offs}
+\begin{enumerate}
+    \item \textbf{The Necessity of Semantic Matching:} The dramatic superiority of the frozen dense bi-encoder over BM25 (0.2431 vs. 0.0347) demonstrates that resolving vocabulary mismatch is the single most critical prerequisite for retrieval on community Q\&A corpora. Pure lexical matching is severely crippled by low term overlap.
+    \item \textbf{The Blindness of Dense Models to Temporal Nuance:} While dense bi-encoders excel at topical semantics, they remain largely indifferent to chronological anchors. In contrast, our classical LightGBM reranker demonstrated that explicit temporal engineering (e.g., exact year overlap) provides substantial gains on date-sensitive queries (e.g., in \texttt{law}). Combining dense candidate retrieval with temporal-aware reranking represents the most promising hybrid design.
+    \item \textbf{Need for Domain-Specific Adaptation:} General-purpose text encoders fail on formal mathematical and symbolic domains like \texttt{quant}, highlighting that retrieval cannot rely entirely on off-the-shelf embedding spaces when mathematical reasoning is involved.
+\end{enumerate}
 
-\textbf{Reproducibility Configuration:}
-All experiments were run on a CPU-only environment (Windows 11, 8 cores, 16.9 GB RAM) using Python 3.12. We pinned random seeds to 42 for numpy and LightGBM. The dataset used is RETECO v1.1, restricted to the \texttt{quant}, \texttt{law}, and \texttt{workplace} domains.
+\subsection{Reproducibility Configuration}
+To guarantee complete reproducibility, our experimental environment is fully documented:
+\begin{itemize}
+    \item \textbf{Hardware Environment:} Windows 11 OS, AMD/Intel 8-core CPU, 16.9 GB System RAM, strictly CPU-only execution for local scripts. Heavy dense embedding encoding was verified on an isolated Google Colab Linux instance equipped with an NVIDIA T4 GPU (16 GB VRAM, CUDA 12.2).
+    \item \textbf{Software Stack:} Python 3.12, \texttt{rank-bm25} 0.2.2, \texttt{scikit-learn} 1.5, \texttt{lightgbm} 4.3, \texttt{sentence-transformers} 3.0, \texttt{torch} 2.3, \texttt{pytrec-eval-terrier} 0.5.6, \texttt{spacy} 3.7 (\texttt{en\_core\_web\_sm}), \texttt{lexical-diversity} 0.1.1.
+    \item \textbf{Hyperparameters and Seeds:} Random seeds were pinned to 42 for NumPy and LightGBM. BM25 parameters were fixed to $k_1=0.9, b=0.4$. BGE-small sequence truncation was set to 256 tokens with cosine similarity metric. LightGBM used 100 estimators, learning rate $\eta=0.05$, and num\_leaves=15.
+    \item \textbf{Corpus Version:} RETECO version 1.1 official release, evaluated on the 3 designated domains (\texttt{quant}, \texttt{law}, \texttt{workplace}). All code, notebooks, and run files are version-controlled in the project repository.
+\end{itemize}

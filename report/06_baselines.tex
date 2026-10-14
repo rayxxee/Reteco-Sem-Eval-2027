@@ -1,11 +1,32 @@
 \section{Baseline Models}
 \label{sec:baselines}
 
-We evaluate four primary approaches:
+We established a systematic progression of retrieval baselines spanning classical lexical ranking, learned feature-based reranking, and pretrained dense representation learning.
+
+\subsection{Baseline A: Classical Retrieval and Feature-Based ML}
 \begin{enumerate}
-    \item \textbf{BM25 (Official):} The classical probabilistic retrieval baseline provided in the starter kit ($k_1=0.9, b=0.4$).
-    \item \textbf{TF-IDF:} A standard Term Frequency-Inverse Document Frequency vectorizer using cosine similarity.
-    \item \textbf{LightGBM Reranker:} A pointwise gradient boosted decision tree classifier trained on the train split using the 13 engineered features. It reranks the top-50 BM25 candidates.
-    \item \textbf{Dense Retriever (Frozen):} BAAI/bge-small-en-v1.5 bi-encoder. The model is completely frozen (no fine-tuning). We embed the entire corpus offline (truncated to 256 tokens for speed) and perform cosine similarity search.
-    \item \textbf{Hybrid (BM25 + Dense):} A simple Reciprocal Rank Fusion (RRF, $k=60$) combining the BM25 lexical rankings with the Dense semantic rankings.
+    \item \textbf{BM25 (Official Starter-Kit Baseline):} We implement the pure-Python Okapi BM25 retriever matching the organizer specifications ($k_1=0.9, b=0.4$). BM25 accounts for term-frequency saturation and document-length normalization over alphanumeric word tokens.
+    \item \textbf{TF-IDF Cosine Baseline:} A classical vector space model using sublinear term-frequency scaling and inverse document frequency, computing pairwise cosine similarity between query and candidate document vectors.
+    \item \textbf{Pointwise LightGBM Reranker:} We train a Gradient Boosted Decision Tree (GBDT) using LightGBM \cite{lightgbm} to re-score candidate passages.
+    \begin{itemize}
+        \item \textbf{Candidate Generation:} BM25 retrieves the top-50 candidate documents for each query.
+        \item \textbf{Training Protocol:} The model is trained \textit{strictly on the training split} (73 queries across the three domains). Positive instances ($rel=1$) are extracted from ground-truth \texttt{qrels\_train.txt}, while negative instances are sampled from non-gold documents appearing in the BM25 top-50.
+        \item \textbf{Hyperparameters:} Objective is binary logloss, learning rate $\eta=0.05$, num\_leaves=15, 100 boosting trees, random seed fixed to 42 for complete reproducibility.
+    \end{itemize}
 \end{enumerate}
+
+\subsection{Baseline B: Pretrained Dense Retrieval (Frozen Representations)}
+Following the establishment of our classical baselines, we evaluate a neural dense retriever:
+\begin{itemize}
+    \item \textbf{Model Architecture:} \texttt{BAAI/bge-small-en-v1.5} \cite{bge_models}, a 33-million parameter bi-encoder with a 384-dimensional embedding space.
+    \item \textbf{Execution Mode:} \textbf{Frozen feature extraction (zero-shot inference, no fine-tuning)}. All model weights remain entirely frozen ($\nabla_\theta = 0$).
+    \item \textbf{Encoding Protocol:} Due to hardware throughput limits, maximum sequence length is set to 256 tokens. As required by BGE, queries are formatted with the instruction prefix: \textit{``Represent this sentence for searching relevant passages:''}, while documents are encoded directly.
+    \item \textbf{Search Execution:} Embeddings are computed offline and cached as \texttt{.npy} arrays. Fast top-$k$ nearest neighbor search is performed via inner product over $L_2$-normalized vectors (cosine similarity).
+\end{itemize}
+
+\subsection{Hybrid Fusion Baseline}
+As an exploratory baseline, we combine lexical and dense rankings using unsupervised Reciprocal Rank Fusion (RRF):
+\begin{equation}
+    \text{RRF\_Score}(d) = \frac{1}{60 + \text{rank}_{\text{BM25}}(d)} + \frac{1}{60 + \text{rank}_{\text{Dense}}(d)}
+\end{equation}
+which merges the top-100 candidates from BM25 and dense bi-encoder without requiring score scale calibration.

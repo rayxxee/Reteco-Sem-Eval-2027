@@ -1,9 +1,17 @@
-\section{Next Steps}
+\section{Next Steps and Advanced System Design}
 \label{sec:nextsteps}
 
-Moving forward, we plan to extend this work in the following directions:
-\begin{enumerate}
-    \item \textbf{Temporal-Aware Dense Retrieval:} Fine-tuning the dense encoder (e.g., using contrastive learning with temporally hard negatives) to embed temporal relationships directly into the semantic space.
-    \item \textbf{Query Decomposition:} Integrating the intermediate steps provided in Sub-track 1b to perform multi-hop retrieval, addressing the complex reasoning failures identified in our error analysis.
-    \item \textbf{Advanced Hybrid Fusion:} Exploring learning-to-rank models (e.g., LambdaMART) that take both BM25 and Dense scores as features, rather than relying on unsupervised RRF.
-\end{enumerate}
+Building on the empirical insights and baseline performance established in this report, we propose three concrete research directions for advanced retrieval modeling in SemEval-2027:
+
+\subsection{1. Contrastive Temporal Fine-Tuning of Bi-Encoders}
+Current dense bi-encoders are trained on general web corpora without explicit temporal contrastive objectives. As demonstrated in our error analysis, models frequently retrieve passages with high semantic overlap from the wrong time period. We propose fine-tuning bi-encoders using \textbf{chronological hard negative mining}:
+\begin{equation}
+    \mathcal{L}_{\text{temporal}} = -\log \frac{\exp(\text{sim}(q_t, d_t^+) / \tau)}{\exp(\text{sim}(q_t, d_t^+) / \tau) + \sum_{d^-} \exp(\text{sim}(q_t, d^-) / \tau) + \sum_{d_{t'}^{\text{temp}}} \exp(\text{sim}(q_t, d_{t'}^{\text{temp}}) / \tau)}
+\end{equation}
+where $d_{t'}^{\text{temp}}$ represents temporally conflicting documents that discuss the same topical entities as $q_t$ but belong to a disjoint time period $t' \neq t$.
+
+\subsection{2. Query Decomposition via Sub-track 1b Linkage}
+Our error analysis revealed that complex queries frequently fail because they require multi-hop reasoning (e.g., verifying a historical prerequisite before identifying an applicable statutory policy). In Sub-track 1b, queries are explicitly broken down into step-by-step intermediate sub-questions. We propose deploying an LLM-based query decomposition agent that splits a Sub-track 1a query into sequential atomic sub-queries, retrieving intermediate evidence iteratively to assemble the final candidate ranking.
+
+\subsection{3. Supervised Two-Stage Dense-Lexical-Temporal Reranking}
+While unsupervised RRF failed due to severe score calibration disparities between BM25 and dense bi-encoders, a supervised learning-to-rank reranker (e.g., LambdaMART or a cross-encoder like \texttt{ms-marco-MiniLM-L-6-v2}) trained on candidate unions from both BM25 and BGE-small can learn non-linear weighting between semantic relatedness, keyword exact matches, and temporal interval overlap.

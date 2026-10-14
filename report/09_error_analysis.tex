@@ -1,12 +1,40 @@
 \section{Error Analysis}
 \label{sec:errors}
 
-We conducted an automated error analysis on 30 failed queries (nDCG@10 = 0 for both BM25 and Dense). Failures typically fell into the following heuristic categories:
+To uncover the qualitative mechanisms behind retrieval breakdown, we conducted an error analysis on the 32 development queries across all three domains, focusing on queries where models scored $\text{nDCG}@10 = 0.0$.
 
+\subsection{Head-to-Head Model Comparison (Dense vs. BM25)}
+Evaluating performance deltas ($\Delta = \text{nDCG}_{\text{Dense}} - \text{nDCG}_{\text{BM25}}$) revealed:
 \begin{itemize}
-    \item \textbf{Temporal Mismatch:} The query requested information for a specific year, but the retrieved documents, while semantically relevant, discussed a different time period. 
-    \item \textbf{Lexical Gap:} The Jaccard similarity between the query and gold document was exceptionally low (e.g., $<0.05$). The user posed the question using vocabulary entirely absent from the relevant post.
-    \item \textbf{Multi-step Reasoning Needed:} For queries corresponding to Sub-track 1b steps, resolving the root query required intermediate hops that our single-pass retrieval pipelines could not perform.
+    \item \textbf{Dense Substantially Beats BM25 ($\Delta > 0.10$):} 18 queries (56.3\% of the dev set). In domains like \texttt{law} and \texttt{workplace}, the dense bi-encoder successfully recovered gold documents that shared virtually no vocabulary with the query.
+    \item \textbf{BM25 Substantially Beats Dense ($\Delta < -0.10$):} 0 queries. BM25 never decisively outperformed the dense encoder on any query in this subset.
+    \item \textbf{Joint Failure ($\text{nDCG} = 0.0$ for both):} 14 queries.
 \end{itemize}
 
-Where BM25 substantially outperformed the dense retriever, it was often due to the dense model conflating semantically similar concepts that lexical matching naturally distinguishes (e.g., precise legal codes or quantitative formulas).
+\subsection{Categorization of Failure Modes}
+We categorized the 14 joint failure cases into three distinct error mechanisms, summarized in Table~\ref{tab:error_categories}:
+
+\begin{table}[h]
+\centering
+\small
+\caption{Taxonomy of failure modes on challenging development queries.}
+\label{tab:error_categories}
+\begin{tabular}{lcp{9.0cm}}
+\toprule
+\textbf{Error Category} & \textbf{Count} & \textbf{Linguistic / Operational Mechanism} \\
+\midrule
+\textbf{Domain / Lexical Gap} & 10 & Highly specialized jargon or formal mathematical formulas (prominent in \texttt{quant}) where neither bag-of-words nor general-purpose text bi-encoders could map colloquial user questions to formal statutory or mathematical expressions. \\
+\addlinespace
+\textbf{Multi-Step Reasoning} & 3 & Queries requiring multi-hop deduction (e.g., resolving a dependent legal clause or historical prerequisite prior to identifying the relevant policy). Single-pass whole-query retrieval fails without step-by-step query decomposition. \\
+\addlinespace
+\textbf{Temporal Mismatch} & 1 & The model successfully matched the topical semantics of the query but retrieved passages describing an outdated or subsequent year (e.g., retrieving 2021 regulatory reforms for a question targeting 2014). \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Per-Domain Gap and Qualitative Insights}
+\begin{itemize}
+    \item \textbf{\texttt{quant} (Hardest Domain, Dense 0.0919):} Dense and sparse models both struggle severely. Financial questions frequently embed LaTeX equations, numeric variables, and specialized abbreviations (e.g., ``Black-Scholes delta hedging under jump diffusion''). BGE-small, trained on natural prose, maps these formulas to generic financial text rather than the mathematically exact gold response.
+    \item \textbf{\texttt{law} (Easiest Domain, Dense 0.3697, LightGBM 0.1340):} Legal questions are rich in structured narrative context, enabling dense bi-encoders to capture topical semantics effectively. Furthermore, explicit year annotations allow the LightGBM reranker's \texttt{year\_overlap} feature to filter out temporally conflicting statutes.
+    \item \textbf{\texttt{workplace} (Dense 0.2676, BM25 0.0230):} Human resources questions (e.g., severance negotiations, non-compete enforcement) are phrased conversationally by users, but answered formally by forum specialists. BM25 fails completely due to vocabulary mismatch, whereas semantic embeddings bridge the terminology gap.
+\end{itemize}

@@ -1,18 +1,111 @@
 \section{Related Work}
 \label{sec:related}
 
-Our work builds upon foundational methods in information retrieval and modern dense representation learning.
+To thoroughly contextualize this task, we review five closely related benchmark and modeling papers. Each addresses an essential facet of reasoning-oriented retrieval: reasoning-heavy retrieval (\textsc{BRIGHT}, \textsc{ReasonIR}), reasoning during document reranking (\textsc{Rank-R1}), conversational retrieval with topic shifts (\textsc{TopiOCQA}), and time-sensitive question answering (\textsc{TimeQA}). For each work, we detail the underlying problem, methodology, findings, limitations, and direct relevance to the RETECO challenge.
 
-\begin{itemize}
-    \item \textbf{Classical Retrieval:} The BM25 algorithm \cite{bm25} serves as a robust baseline for lexical matching. It effectively models term frequency saturation and document length normalization, which remains critical for retrieving long documents.
-    \item \textbf{Dense Retrieval:} BAAI's BGE models \cite{bge_models} represent the current state-of-the-art in small-footprint bi-encoder representations, providing strong semantic matching capabilities without the need for lexical overlap.
-    \item \textbf{Reranking Models:} Pointwise and listwise reranking using tree-based methods like LightGBM \cite{lightgbm} have proven effective in incorporating diverse hand-crafted features (e.g., temporal overlap, query length) alongside baseline retrieval scores.
-    \item \textbf{Task Benchmarks:} The upstream datasets for this challenge are derived from the TEMPO \cite{tempo} and RECOR \cite{recor} benchmarks.
-\end{itemize}
+\subsection{Review of Individual Papers}
 
-\textbf{Reading List for Further Review:}
+\subsubsection{BRIGHT: A Realistic Benchmark for Reasoning-Intensive Retrieval}
+\textbf{Problem.} Traditional information retrieval benchmarks predominantly focus on standard keyword-matching or surface semantic similarity, where simple lexical overlap suffices to retrieve the target document. Such evaluations fail to assess whether retrieval systems can resolve queries requiring multi-step deductive or domain-specific reasoning to connect the request with relevant evidence \cite{bright}.
+
+\textbf{What the authors did.} The authors introduced \textsc{BRIGHT}, the first text retrieval benchmark designed specifically for intensive reasoning. As detailed in the TEMPO benchmark documentation, \textsc{BRIGHT} comprises 1,384 realistic queries across 12 domains (including economics, psychology, and software engineering), where relevant documents rarely exhibit direct surface similarity with the query.
+
+\textbf{Method and Evaluation.} State-of-the-art sparse, dense, and learned reranking models were evaluated. The authors also tested chain-of-thought query expansion, prompting large language models (LLMs) to generate explicit reasoning traces prior to candidate retrieval.
+
+\textbf{Findings.} Prevailing retrieval systems performed poorly on unaugmented queries. However, incorporating explicit reasoning traces into the query representation improved retrieval effectiveness by up to 12.2 nDCG@10 points.
+
+\textbf{Limitations.} \textsc{BRIGHT} contains no temporal dimension and lacks conversational context. Queries are isolated, static questions, making it impossible to evaluate temporal tracking or history resolution.
+
+\textbf{Relevance to RETECO.} \textsc{BRIGHT} serves as the conceptual foundation for TEMPO and RECOR. Its primary finding---that reasoning prior to retrieval dramatically improves recall---motivates our exploration of temporal feature extraction and query decomposition.
+
+\subsubsection{ReasonIR: Training Retrievers for Reasoning Tasks}
+\textbf{Problem.} Existing dense bi-encoders demonstrate limited gains on reasoning-intensive benchmarks. This deficiency stems largely from training distributions dominated by short, factual question-answer pairs that reward direct lexical or semantic alignment rather than deductive inference \cite{reasonir}.
+
+\textbf{What the authors did.} The authors constructed \textsc{ReasonIR-8B}, a dense retriever explicitly trained for reasoning tasks. They built a synthetic data generation pipeline that pairs documents with challenging queries requiring reasoning, alongside mined ``hard negatives'' that appear topically related but fail to provide valid answers. The model is an 8B-parameter bi-encoder initialized from Llama~3.1~8B and optimized via contrastive loss on combined synthetic and curated corpora.
+
+\textbf{Findings.} \textsc{ReasonIR-8B} achieved 29.9 nDCG@10 on \textsc{BRIGHT} without a reranker and 36.9 with a reranker, establishing state-of-the-art performance. In retrieval-augmented generation (RAG), it improved MMLU by 6.4\% and GPQA by 22.6\% over closed-book baselines. Performance scaled positively with longer, information-rich query rewrites, and hybrid combinations with BM25 yielded further gains.
+
+\textbf{Limitations.} Top performance remains below 40 nDCG@10, underscoring that reasoning retrieval remains an open challenge. The model is trained for general reasoning without temporal grounding, and an 8B architecture incurs prohibitive inference costs on large corpora under consumer hardware constraints.
+
+\textbf{Relevance to RETECO.} \textsc{ReasonIR} demonstrates that dense bi-encoders benefit substantially from hybrid integration with lexical systems (BM25) and learned rerankers.
+
+\subsubsection{Rank-R1: Enhancing Reasoning in LLM Rerankers via Reinforcement Learning}
+\textbf{Problem.} Multi-stage retrieval architectures rely on second-stage rerankers to reorder candidate sets. Existing LLM-based rerankers are conventionally fine-tuned or prompted to output rank permutations directly, without generating intermediate rationales explaining relevance \cite{rankr1}.
+
+\textbf{What the authors did.} The authors developed \textsc{Rank-R1}, a reranker that explicitly reasons over query-document pairs prior to ranking. Employing setwise prompting, the model is trained via reinforcement learning using the Group Relative Policy Optimization (GRPO) algorithm with reward signals derived solely from ground-truth relevance labels, without requiring human reasoning demonstrations.
+
+\textbf{Findings.} \textsc{Rank-R1} matched supervised fine-tuning baselines on in-domain MS~MARCO while utilizing only 18\% of training data. On complex out-of-domain queries in \textsc{BRIGHT}, it outperformed zero-shot prompting and supervised models, with a 14B variant surpassing GPT-4 reranking.
+
+\textbf{Limitations.} \textsc{Rank-R1} operates strictly as a reranker and cannot recover candidates missed during first-stage retrieval. Generating reasoning chains for candidate windows adds substantial inference latency, and the model lacks temporal alignment mechanisms.
+
+\textbf{Relevance to RETECO.} This motivates our adoption of a two-stage architecture: pairing a fast first-stage retriever (BM25 or dense bi-encoder) with an interpretable, feature-engineered reranker.
+
+\subsubsection{TopiOCQA: Open-Domain Conversational QA with Topic Switching}
+\textbf{Problem.} Prior conversational search benchmarks assumed static topics or provided gold passages directly. Real-world information-seeking dialogues naturally traverse multiple interrelated topics, requiring continuous multi-turn retrieval \cite{topiocqa}.
+
+\textbf{What the authors did.} The authors released \textsc{TopiOCQA}, an open-domain conversational dataset spanning 3,920 Wikipedia conversations averaging 13 turns and covering four distinct topics per dialogue. They benchmarked dense and sparse retrievers coupled with neural reader models.
+
+\textbf{Findings.} The best baseline reached an F1 score of 51.9, lagging 18.3 points behind human performance. Systems evaluating only the current utterance performed worst, confirming that conversation history resolution is essential.
+
+\textbf{Limitations.} The corpus is limited to Wikipedia, and evaluation focuses primarily on downstream answer F1 rather than standalone nDCG@10 retrieval ranking.
+
+\textbf{Relevance to RETECO.} \textsc{TopiOCQA} exemplifies the challenge explored in RETECO Track 2 (RECOR), demonstrating that contextual history is indispensable for resolving ambiguous utterances.
+
+\subsubsection{TimeQA: Answering Time-Sensitive Questions}
+\textbf{Problem.} Many real-world facts evolve dynamically over time (e.g., elected officials, regulatory statutes). Conventional question answering benchmarks lack temporal annotations, failing to test a model's temporal grounding \cite{timeqa}.
+
+\textbf{What the authors did.} The authors introduced \textsc{TimeQA}, comprising over 60,000 time-sensitive queries extracted from Wikidata and aligned with Wikipedia articles. The benchmark includes ``Easy'' modes (explicit date spans) and ``Hard'' modes (requiring implicit temporal arithmetic and comparison).
+
+\textbf{Findings.} Long-document reader architectures (e.g., FiD, BigBird) attained at best 46\% accuracy, compared to 87\% human performance. Models struggled significantly with implicit date arithmetic.
+
+\textbf{Limitations.} \textsc{TimeQA} is formulated as machine reading comprehension over single passages rather than large-scale corpus retrieval.
+
+\textbf{Relevance to RETECO.} \textsc{TimeQA} highlights why RETECO Track 1 (TEMPO) is difficult: candidate passages may be completely relevant topically while belonging to the wrong temporal window.
+
+\subsection{Side-by-Side Comparison}
+
+Table~\ref{tab:lit_comparison} provides a structured comparison of the five benchmark papers across core dimensions.
+
+\begin{table*}[t]
+\centering
+\small
+\caption{Side-by-side comparison of surveyed literature.}
+\label{tab:lit_comparison}
+\begin{tabular}{lp{3.5cm}p{3.5cm}p{3.2cm}p{3.5cm}}
+\toprule
+\textbf{Paper} & \textbf{Main Focus} & \textbf{Data / Benchmark} & \textbf{Method} & \textbf{Key Result} \\
+\midrule
+\textsc{BRIGHT} \cite{bright} & Reasoning-intensive retrieval & 1,384 queries, 12 domains & Tested sparse/dense models; added query reasoning & Baseline retrievers fail; reasoning adds up to +12.2 nDCG \\
+\addlinespace
+\textsc{ReasonIR} \cite{reasonir} & Retriever pre-training for reasoning & Synthetic reasoning data + public corpora & Contrastive 8B bi-encoder fine-tuning & 29.9 nDCG@10 on \textsc{BRIGHT} (36.9 with reranker) \\
+\addlinespace
+\textsc{Rank-R1} \cite{rankr1} & Rationale-guided document reranking & MS MARCO; tested on TREC DL and \textsc{BRIGHT} & RL (GRPO) on setwise candidate prompts & High sample efficiency; strong out-of-domain transfer \\
+\addlinespace
+\textsc{TopiOCQA} \cite{topiocqa} & Conversational search with topic switches & 3,920 Wikipedia dialogues, $\sim$13 turns/dialogue & Dense/sparse retrievers + neural readers & Best F1 51.9 (18.3 points below human ceiling) \\
+\addlinespace
+\textsc{TimeQA} \cite{timeqa} & Time-sensitive question answering & 60,000+ Wikidata--Wikipedia pairs & Long-document QA models (BigBird, FiD) & Best model 46\% accuracy vs. 87\% human performance \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Synthesis and Identified Research Gap}
+
+Four major insights emerge from this literature synthesis:
 \begin{enumerate}
-    \item TEMPO: Temporally Grounded Retrieval Benchmark (to verify data generation methods)
-    \item RECOR: Reasoning-Intensive Conversational Retrieval (to understand the conversational counterpart)
-    \item C-Pack / BGE Models (to understand the bi-encoder architecture and training)
+    \item \textbf{Reasoning is critical in retrieval:} Standard retrievers break down when relevance requires deductive inference. Incorporating explicit reasoning traces (as in \textsc{BRIGHT} and \textsc{ReasonIR}) substantially improves candidate recall.
+    \item \textbf{Temporal grounding and conversational tracking are distinct bottlenecks:} \textsc{TimeQA} establishes that models conflate temporally disparate facts, while \textsc{TopiOCQA} demonstrates that models fail when stripped of dialogue history.
+    \item \textbf{Persistent performance gap relative to human baselines:} Across all benchmarks, state-of-the-art models score well below human performance (under 40 nDCG@10 on \textsc{BRIGHT}, 46\% on \textsc{TimeQA}), confirming that reasoning retrieval is an open research problem.
+    \item \textbf{Metric alignment:} \textsc{BRIGHT}, \textsc{ReasonIR}, and \textsc{Rank-R1} evaluate ranking via nDCG@10, directly aligning with RETECO's official evaluation protocol.
 \end{enumerate}
+
+\textbf{Research Gap:} Existing benchmarks isolate individual dimensions: \textsc{BRIGHT} explores reasoning, \textsc{TimeQA} evaluates temporal QA over single passages, and \textsc{TopiOCQA} studies conversational shifts. None combines \textit{temporal reasoning over large multi-domain corpora with full ranked retrieval}. This is precisely the research gap addressed by RETECO's TEMPO benchmark \cite{tempo} (13 domains) and RECOR benchmark \cite{recor} (11 domains).
+
+\subsection{Implications for Experimental Design}
+Guided by this literature review, our experimental strategy incorporates the following design choices:
+\begin{itemize}
+    \item We adopt BM25 \cite{bm25} as the foundational lexical reference baseline, as provided in the official starter kit.
+    \item For pretrained models, we deploy a dense bi-encoder (\texttt{bge-small-en-v1.5} \cite{bge_models}) to evaluate zero-shot semantic representation against lexical baselines.
+    \item Informed by \textsc{Rank-R1}, we implement a two-stage architecture: utilizing a fast first-stage candidate retrieval followed by a feature-engineered LightGBM reranker \cite{lightgbm}.
+    \item Guided by \textsc{TimeQA}, our feature engineering explicitly extracts temporal cues (four-digit years and date overlap) to separate true temporal alignment from surface topical similarity.
+    \item In error analysis, we systematically categorize model failures into temporal mismatches, vocabulary gaps, and multi-step reasoning breakdowns.
+\end{itemize}

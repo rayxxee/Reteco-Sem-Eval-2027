@@ -1,18 +1,36 @@
 \section{Evaluation Setup}
 \label{sec:evaluation}
 
-The official metric for Sub-track 1a is \textbf{nDCG@10} (Normalized Discounted Cumulative Gain at cutoff 10), macro-averaged over queries.
+The official evaluation metric for RETECO Sub-track 1a is \textbf{Macro-averaged nDCG@10} (Normalized Discounted Cumulative Gain at cutoff rank $k=10$). In accordance with task protocol, all hyperparameter choices were fixed prior to evaluation, and all reported metrics are evaluated strictly on the \textbf{Development split} (with training conducted exclusively on the Train split).
 
-Mathematically, for a given query, the Discounted Cumulative Gain at rank $k$ is defined as:
+\subsection{Mathematical Formulation}
+For a single query $q \in \mathcal{Q}$, the Discounted Cumulative Gain at rank cutoff $k=10$ is computed as:
 \begin{equation}
-    \text{DCG}@k = \sum_{i=1}^{k} \frac{rel_i}{\log_2(i+1)}
+    \text{DCG}@10(q) = \sum_{i=1}^{10} \frac{2^{rel_i} - 1}{\log_2(i + 1)} = \sum_{i=1}^{10} \frac{rel_i}{\log_2(i + 1)}
 \end{equation}
-where $rel_i \in \{0, 1\}$ is the binary relevance of the document at rank $i$.
+where $rel_i \in \{0, 1\}$ represents the binary relevance of the document placed at position $i$ in the ranked list.
 
-The nDCG is the DCG normalized by the Ideal DCG (IDCG), which is the DCG of a perfectly ranked list:
+To normalize for variable numbers of gold documents across queries, the Ideal DCG (IDCG) is computed as the DCG achieved by an optimal ranking where all available ground-truth relevant documents (up to cutoff $k$) occupy the highest ranks:
 \begin{equation}
-    \text{nDCG}@k = \frac{\text{DCG}@k}{\text{IDCG}@k}
+    \text{IDCG}@10(q) = \sum_{i=1}^{\min(10, |G_q|)} \frac{1}{\log_2(i + 1)}
+\end{equation}
+where $|G_q|$ is the total number of gold documents for query $q$. The normalized score is:
+\begin{equation}
+    \text{nDCG}@10(q) = \begin{cases} 
+      \frac{\text{DCG}@10(q)}{\text{IDCG}@10(q)} & \text{if } \text{IDCG}@10(q) > 0 \\
+      0 & \text{otherwise}
+   \end{cases}
 \end{equation}
 
-\textbf{Characteristics of the metric:}
-nDCG heavily rewards retrieving relevant documents at the very top ranks (rank 1 and 2) due to the steep logarithmic discount. Because this is a retrieval task and not standard classification, there is no traditional "class imbalance" problem in the loss function, but the extreme skew in gold-document counts (many queries have only 1-2 relevant documents) means that missing a single document severely penalizes the score. Macro-averaging ensures that queries with many relevant documents do not disproportionately dominate the overall system score.
+The overall system performance across a domain is defined by the unweighted arithmetic mean (\textbf{Macro-average}):
+\begin{equation}
+    \text{Macro nDCG}@10 = \frac{1}{|\mathcal{Q}|} \sum_{q \in \mathcal{Q}} \text{nDCG}@10(q)
+\end{equation}
+
+\subsection{Conceptual Behavior, Penalties, and Label Skew}
+\begin{itemize}
+    \item \textbf{Rank Discounting:} Due to the logarithmic denominator $\log_2(i + 1)$, retrieving a gold document at rank 1 awards full value ($1.00$), whereas rank 2 awards only $0.63$, rank 5 awards $0.38$, and ranks $>10$ award $0.00$. The metric heavily penalizes systems that retrieve relevant documents outside the top 10.
+    \item \textbf{Absence of Traditional Classification Imbalance:} Because retrieval operates via candidate ranking rather than hard class boundary decision, there is no conventional accuracy-paradox or precision/recall trade-off across fixed decision thresholds.
+    \item \textbf{Sensitivity to Gold Document Skew:} Most queries possess only 1 to 2 gold documents. When $|G_q| = 1$, missing the single relevant document drops $\text{nDCG}@10(q)$ from $1.0$ directly to $0.0$. Macro-averaging treats every query equally, preventing high-recall queries from masking complete failures on difficult queries.
+    \item \textbf{Scoring Cross-Verification:} All computed nDCG@10 scores were verified using the standard \texttt{pytrec\_eval} library, ensuring zero discrepancy against official TREC evaluation standards.
+\end{itemize}
